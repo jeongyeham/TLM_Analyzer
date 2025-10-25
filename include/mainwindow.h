@@ -16,7 +16,6 @@ class QLabel;
 class QTextEdit;
 class QProgressBar;
 class QGroupBox;
-class QSplitter;
 class QAction;
 class QListWidget;
 QT_END_NAMESPACE
@@ -41,6 +40,7 @@ private slots:
     void onAnalysisComplete(const QString &result);
     void onPlotDataReady(const QVector<double> &spacings,
                         const QVector<double> &resistances,
+                        const QVector<double> &currents,
                         double slope, double intercept);
     void onDataPointSelectionChanged();
 
@@ -60,14 +60,19 @@ private:
 
     QLineEdit *folderPathEdit;
     QPushButton *browseButton;
+
     QPushButton *analyzeButton;
     QPushButton *exportButton;
+
     QPushButton *addPointButton;
     QPushButton *removePointButton;
 
     QLineEdit *voltageEdit;
+
     QTextEdit *resultText;
+
     QProgressBar *progressBar;
+
     QListWidget *dataPointList;
 
     QChartView *chartView;
@@ -81,6 +86,7 @@ private:
     // Data storage
     QVector<double> originalSpacings;
     QVector<double> originalResistances;
+    QVector<double> originalCurrents;  // Store current values for each data point
     QVector<bool> dataPointEnabled;  // Mark whether data points are enabled
     double currentSlope;
     double currentIntercept;
