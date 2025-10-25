@@ -180,23 +180,34 @@ bool TLMAnalyzer::linearRegression(const QVector<double> &x, const QVector<doubl
         return false;
     }
 
-    double sumX = 0.0, sumY = 0.0, sumXY = 0.0, sumX2 = 0.0;
     qsizetype n = x.size();
-
+    
+    // Calculate means
+    double meanX = 0.0, meanY = 0.0;
     for (qsizetype i = 0; i < n; ++i) {
-        sumX += x[i];
-        sumY += y[i];
-        sumXY += x[i] * y[i];
-        sumX2 += x[i] * x[i];
+        meanX += x[i];
+        meanY += y[i];
+    }
+    meanX /= n;
+    meanY /= n;
+
+    // Calculate centered sums for better numerical stability
+    double sumXY_centered = 0.0, sumX2_centered = 0.0;
+    for (qsizetype i = 0; i < n; ++i) {
+        double x_centered = x[i] - meanX;
+        double y_centered = y[i] - meanY;
+        sumXY_centered += x_centered * y_centered;
+        sumX2_centered += x_centered * x_centered;
     }
 
-    double denominator = n * sumX2 - sumX * sumX;
-    if (std::abs(denominator) < 1e-12) {
+    // Check for zero denominator
+    if (std::abs(sumX2_centered) < 1e-15) {
         return false;
     }
 
-    slope = (n * sumXY - sumX * sumY) / denominator;
-    intercept = (sumY - slope * sumX) / n;
+    // Calculate slope and intercept using centered data
+    slope = sumXY_centered / sumX2_centered;
+    intercept = meanY - slope * meanX;
 
     return true;
 }
