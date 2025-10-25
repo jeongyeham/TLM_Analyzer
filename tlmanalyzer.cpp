@@ -8,7 +8,6 @@
 #include <QFileInfo>
 #include <QDebug>
 #include <algorithm>
-#include <cmath>
 
 TLMAnalyzer::TLMAnalyzer(QObject *parent)
     : QObject(parent)
@@ -29,18 +28,21 @@ void TLMAnalyzer::analyzeFolder(const QString &folderPath, double voltage)
 
     QVector<double> spacings;
     QVector<double> resistances;
+    QVector<double> currents;  // To store current values
 
     // Process each CSV file
     for (const QString &filename : csvFiles) {
         double spacing = extractSpacingFromFilename(filename);
         if (spacing > 0) {
             QString filePath = dir.filePath(filename);
-            double resistance = getResistance(filePath, voltage);
+            double current;
+            double resistance = getResistance(filePath, voltage, current);
 
             if (resistance > 0) {
                 spacings.append(spacing);
                 resistances.append(resistance);
-                qDebug() << "File:" << filename << "Spacing:" << spacing << "μm, Resistance:" << resistance << "Ω";
+                currents.append(current);  // Store current value
+                qDebug() << "File:" << filename << "Spacing:" << spacing << "μm, Resistance:" << resistance << "Ω, Current:" << current << "A";
             }
         }
     }
@@ -58,10 +60,11 @@ void TLMAnalyzer::analyzeFolder(const QString &folderPath, double voltage)
         return spacings[a] < spacings[b];
     });
 
-    QVector<double> sortedSpacings, sortedResistances;
+    QVector<double> sortedSpacings, sortedResistances, sortedCurrents;
     for (qsizetype idx : indices) {
         sortedSpacings.append(spacings[idx]);
         sortedResistances.append(resistances[idx]);
+        sortedCurrents.append(currents[idx]);
     }
 
     // Perform linear regression
@@ -85,8 +88,8 @@ void TLMAnalyzer::analyzeFolder(const QString &folderPath, double voltage)
         "Specific Contact Resistivity (ρc): %3 Ω·cm²\n\n"
         "Linear Fit: R = %4 × L + %5\n\n"
         "Data Points:\n"
-        "Spacing (μm) | Resistance (Ω)\n"
-        "-----------------------------\n"
+        "Spacing (μm) | Resistance (Ω) | Current (A)\n"
+        "------------------------------------------\n"
     ).arg(Rsh, 0, 'f', 3)
      .arg(Rc, 0, 'f', 3)
      .arg(Rouc, 0, 'e', 3)
@@ -94,16 +97,19 @@ void TLMAnalyzer::analyzeFolder(const QString &folderPath, double voltage)
      .arg(intercept, 0, 'f', 6);
 
     for (qsizetype i = 0; i < sortedSpacings.size(); ++i) {
-        resultText += QString("  %1\t\t%2\n").arg(sortedSpacings[i], 6, 'f', 1).arg(sortedResistances[i], 0, 'f', 6);
+        resultText += QString("  %1\t\t%2\t\t%3\n")
+                     .arg(sortedSpacings[i], 6, 'f', 1)
+                     .arg(sortedResistances[i], 0, 'f', 6)
+                     .arg(sortedCurrents[i], 0, 'f', 6);
     }
 
     resultText += QString("\nFiles processed: %1").arg(csvFiles.size());
 
     emit analysisComplete(resultText);
-    emit plotDataReady(sortedSpacings, sortedResistances, slope, intercept);
+    emit plotDataReady(sortedSpacings, sortedResistances, sortedCurrents, slope, intercept);
 }
 
-double TLMAnalyzer::getResistance(const QString &filePath, double voltage)
+double TLMAnalyzer::getResistance(const QString &filePath, double voltage, double &current)
 {
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly)) {
@@ -148,6 +154,7 @@ double TLMAnalyzer::getResistance(const QString &filePath, double voltage)
 
     if (foundVoltage && foundZero) {
         double resistance = voltage / (I_voltage - I_zero);
+        current = I_voltage - I_zero;  // Return the current value
         qDebug() << "File:" << QFileInfo(filePath).fileName()
                  << "V:" << voltage << "I_voltage:" << I_voltage
                  << "I_zero:" << I_zero << "R:" << resistance;
