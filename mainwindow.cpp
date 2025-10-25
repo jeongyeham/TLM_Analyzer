@@ -123,7 +123,7 @@ void MainWindow::setupUI()
     resultText = new QTextEdit();
     resultText->setReadOnly(true);
     resultText->setMaximumHeight(250);
-    resultText->setStyleSheet("QTextEdit { background-color: #f5f5f5; font-family: monospace; }");
+    //resultText->setStyleSheet("QTextEdit { background-color: #f5f5f5; font-family: monospace; }");
     resultLayout->addWidget(resultText);
 
     // Assemble main layout (remove splitter)
@@ -146,7 +146,12 @@ void MainWindow::setupConnections()
     connect(dataPointList, &QListWidget::itemSelectionChanged, this, &MainWindow::onDataPointSelectionChanged);
 
     connect(analyzer.data(), &TLMAnalyzer::analysisComplete, this, &MainWindow::onAnalysisComplete);
-    connect(analyzer.data(), &TLMAnalyzer::plotDataReady, this, &MainWindow::onPlotDataReady);
+    connect(analyzer.data(), &TLMAnalyzer::plotDataReady, this, [this](const QVector<double> &spacings,
+                                                                      const QVector<double> &resistances,
+                                                                      const QVector<double> &currents,
+                                                                      double slope, double intercept) {
+        this->onPlotDataReady(spacings, resistances, currents, slope, intercept);
+    });
 }
 
 void MainWindow::setupChart()
@@ -266,13 +271,16 @@ void MainWindow::addDataPoint()
     // Add to data
     originalSpacings.append(spacing);
     originalResistances.append(resistance);
+    originalCurrents.append(current);  // Store current value
     dataPointEnabled.append(true);
     
     // Update list and chart
     updateDataPointList();
     
     // Recalculate and redraw
-    onPlotDataReady(originalSpacings, originalResistances, currentSlope, currentIntercept);
+    // Create a temporary currents vector with zeros for existing points and the new current value
+    QVector<double> tempCurrents = originalCurrents;
+    onPlotDataReady(originalSpacings, originalResistances, tempCurrents, currentSlope, currentIntercept);
 }
 
 void MainWindow::removeDataPoint()
@@ -286,7 +294,9 @@ void MainWindow::removeDataPoint()
         updateDataPointList();
         
         // Recalculate and redraw
-        onPlotDataReady(originalSpacings, originalResistances, currentSlope, currentIntercept);
+        // Create a temporary currents vector with zeros for existing points
+        QVector<double> tempCurrents = originalCurrents;
+        onPlotDataReady(originalSpacings, originalResistances, tempCurrents, currentSlope, currentIntercept);
     }
 }
 
@@ -339,11 +349,14 @@ void MainWindow::onAnalysisComplete(const QString &result)
 
 void MainWindow::onPlotDataReady(const QVector<double> &spacings,
                                const QVector<double> &resistances,
+                               const QVector<double> &currents,
                                double slope, double intercept)
 {
     // Store original data
     originalSpacings = spacings;
     originalResistances = resistances;
+    originalCurrents = currents;  // Store current values
+    
     currentSlope = slope;
     currentIntercept = intercept;
     
@@ -358,7 +371,11 @@ void MainWindow::onPlotDataReady(const QVector<double> &spacings,
     
     // Clear previous series and axes
     chart->removeAllSeries();
-    chart->axes().clear(); // Clear all axes
+    
+    // Remove all axes explicitly
+    for (QAbstractAxis *axis : chart->axes()) {
+        chart->removeAxis(axis);
+    }
 
     // Collect enabled data points
     QVector<double> enabledSpacings, enabledResistances;
@@ -448,10 +465,11 @@ void MainWindow::updateDataPointList()
     dataPointList->clear();
     
     for (int i = 0; i < originalSpacings.size(); ++i) {
-        QString itemText = QString("Point %1: Spacing=%2 μm, Resistance=%3 Ω")
+        QString itemText = QString("Point %1: Spacing=%2 μm, Resistance=%3 Ω, Current=%4 A")
                           .arg(i + 1)
                           .arg(originalSpacings[i], 0, 'f', 3)
-                          .arg(originalResistances[i], 0, 'f', 3);
+                          .arg(originalResistances[i], 0, 'f', 3)
+                          .arg(originalCurrents[i], 0, 'f', 6);
         
         if (!dataPointEnabled[i]) {
             itemText += " (Removed)";
