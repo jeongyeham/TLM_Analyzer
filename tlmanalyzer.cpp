@@ -30,7 +30,7 @@ void TLMAnalyzer::analyzeFolder(const QString &folderPath, double voltage)
     QVector<double> spacings;
     QVector<double> resistances;
 
-    // 处理每个CSV文件
+    // Process each CSV file
     for (const QString &filename : csvFiles) {
         double spacing = extractSpacingFromFilename(filename);
         if (spacing > 0) {
@@ -50,7 +50,7 @@ void TLMAnalyzer::analyzeFolder(const QString &folderPath, double voltage)
         return;
     }
 
-    // 按间距排序
+    // Sort by spacing
     QVector<qsizetype> indices(spacings.size());
     for (qsizetype i = 0; i < spacings.size(); ++i) indices[i] = i;
 
@@ -64,19 +64,19 @@ void TLMAnalyzer::analyzeFolder(const QString &folderPath, double voltage)
         sortedResistances.append(resistances[idx]);
     }
 
-    // 执行线性回归
+    // Perform linear regression
     double slope, intercept;
     if (!linearRegression(sortedSpacings, sortedResistances, slope, intercept)) {
         emit analysisComplete("Linear regression failed - data may be invalid.");
         return;
     }
 
-    // 计算参数
-    double Rsh = slope * 100.0;  // 转换为 Ω/sq
-    double Rc = intercept / 20.0; // 接触电阻
-    double Rouc = (Rc * Rc / Rsh) * 1e-2; // 比接触电阻率
+    // Calculate parameters
+    double Rsh = slope * 100.0;  // Convert to Ω/sq
+    double Rc = intercept / 20.0; // Contact resistance
+    double Rouc = (Rc * Rc / Rsh) * 1e-2; // Specific contact resistivity
 
-    // 格式化结果
+    // Format results
     QString resultText = QString(
         "TLM Analysis Results:\n"
         "====================\n"
@@ -117,15 +117,15 @@ double TLMAnalyzer::getResistance(const QString &filePath, double voltage)
     double I_voltage = 0.0;
     double I_zero = 0.0;
 
-    // 跳过标题（如果存在）并查找数据
+    // Skip header (if present) and find data
     while (!in.atEnd()) {
         QString line = in.readLine();
         QStringList fields = line.split(',');
 
         if (fields.size() >= 7) {
             bool ok1, ok2;
-            double v = fields[5].toDouble(&ok1);  // 第6列电压
-            double i = fields[6].toDouble(&ok2);  // 第7列电流
+            double v = fields[5].toDouble(&ok1);  // Column 6 voltage
+            double i = fields[6].toDouble(&ok2);  // Column 7 current
 
             if (ok1 && ok2) {
                 if (std::abs(v - voltage) < 1e-3 && !foundVoltage) {

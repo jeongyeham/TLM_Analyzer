@@ -6,7 +6,7 @@
 #include <QtCharts/QValueAxis>
 #include <QVector>
 
-// 前向声明
+// Forward declarations
 QT_BEGIN_NAMESPACE
 class QVBoxLayout;
 class QHBoxLayout;
@@ -51,7 +51,7 @@ private:
     void setupChart();
     void updateDataPointList();
 
-    // 使用智能指针管理对象生命周期
+    // Use smart pointer to manage object lifetime
     QScopedPointer<TLMAnalyzer> analyzer;
 
     // UI Components
@@ -78,10 +78,10 @@ private:
     // Menu actions
     QAction *aboutAction;
     
-    // 数据存储
+    // Data storage
     QVector<double> originalSpacings;
     QVector<double> originalResistances;
-    QVector<bool> dataPointEnabled;  // 标记数据点是否启用
+    QVector<bool> dataPointEnabled;  // Mark whether data points are enabled
     double currentSlope;
     double currentIntercept;
 };

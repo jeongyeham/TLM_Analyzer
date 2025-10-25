@@ -43,7 +43,7 @@ void MainWindow::setupMenu()
     aboutAction = new QAction(tr("About"), this);
     connect(aboutAction, &QAction::triggered, this, &MainWindow::showAbout);
     
-    // 创建菜单栏
+    // Create menu bar
     QMenu *helpMenu = menuBar()->addMenu(tr("Help"));
     helpMenu->addAction(aboutAction);
 }
@@ -55,7 +55,7 @@ void MainWindow::setupUI()
 
     mainLayout = new QVBoxLayout(centralWidget);
 
-    // 文件夹选择区域
+    // Folder selection area
     QGroupBox *folderGroup = new QGroupBox("Data Selection");
     QHBoxLayout *folderLayout = new QHBoxLayout(folderGroup);
     folderPathEdit = new QLineEdit();
@@ -64,7 +64,7 @@ void MainWindow::setupUI()
     folderLayout->addWidget(folderPathEdit);
     folderLayout->addWidget(browseButton);
 
-    // 参数设置区域
+    // Parameter setting area
     QGroupBox *paramGroup = new QGroupBox("Analysis Parameters");
     QGridLayout *paramLayout = new QGridLayout(paramGroup);
 
@@ -77,7 +77,7 @@ void MainWindow::setupUI()
     paramLayout->addWidget(new QLabel("Resistance Voltage (V):"), 0, 0);
     paramLayout->addWidget(voltageEdit, 0, 1);
 
-    // 按钮区域
+    // Button area
     QHBoxLayout *buttonLayout = new QHBoxLayout();
     analyzeButton = new QPushButton("Analyze Data");
     analyzeButton->setStyleSheet("QPushButton { background-color: #2196F3; color: white; font-weight: bold; padding: 8px; }");
@@ -87,11 +87,11 @@ void MainWindow::setupUI()
     buttonLayout->addWidget(exportButton);
     buttonLayout->addStretch();
 
-    // 进度条
+    // Progress bar
     progressBar = new QProgressBar();
     progressBar->setVisible(false);
 
-    // 数据点管理区域
+    // Data point management area
     QGroupBox *dataPointGroup = new QGroupBox("Data Points Management");
     QHBoxLayout *dataPointLayout = new QHBoxLayout(dataPointGroup);
     
@@ -109,7 +109,7 @@ void MainWindow::setupUI()
     dataPointLayout->addWidget(dataPointList, 1);
     dataPointLayout->addLayout(dataPointButtonLayout);
 
-    // 图表区域
+    // Chart area
     QGroupBox *chartGroup = new QGroupBox("TLM Analysis Plot");
     QVBoxLayout *chartLayout = new QVBoxLayout(chartGroup);
     chartView = new QChartView();
@@ -117,7 +117,7 @@ void MainWindow::setupUI()
     chartView->setRenderHint(QPainter::Antialiasing);
     chartLayout->addWidget(chartView);
 
-    // 结果区域
+    // Results area
     QGroupBox *resultGroup = new QGroupBox("Analysis Results");
     QVBoxLayout *resultLayout = new QVBoxLayout(resultGroup);
     resultText = new QTextEdit();
@@ -126,7 +126,7 @@ void MainWindow::setupUI()
     resultText->setStyleSheet("QTextEdit { background-color: #f5f5f5; font-family: monospace; }");
     resultLayout->addWidget(resultText);
 
-    // 组装主布局 (移除分割器)
+    // Assemble main layout (remove splitter)
     mainLayout->addWidget(folderGroup);
     mainLayout->addWidget(paramGroup);
     mainLayout->addLayout(buttonLayout);
@@ -172,7 +172,7 @@ void MainWindow::selectFolder()
         folderPathEdit->setText(folder);
         currentFolder = folder;
 
-        // 自动扫描文件夹中的CSV文件
+        // Automatically scan for CSV files in folder
         QDir dir(folder);
         QStringList csvFiles = dir.entryList({"*.csv"}, QDir::Files);
         if (!csvFiles.isEmpty()) {
@@ -238,7 +238,7 @@ void MainWindow::exportPlot()
 
 void MainWindow::addDataPoint()
 {
-    // 弹出对话框让用户输入新的数据点
+    // Pop up dialog to let user input new data point
     bool ok1, ok2;
     double spacing = QInputDialog::getDouble(this, "Add Data Point", "Enter spacing value (μm):", 0, -1000000, 1000000, 3, &ok1);
     if (!ok1) return;
@@ -246,7 +246,7 @@ void MainWindow::addDataPoint()
     double current = QInputDialog::getDouble(this, "Add Data Point", "Enter current value (A):", 0, -1000000, 1000000, 6, &ok2);
     if (!ok2) return;
     
-    // 获取当前设置的电阻电压值
+    // Get the currently set resistance voltage value
     bool voltageOk;
     double voltage = voltageEdit->text().toDouble(&voltageOk);
     if (!voltageOk || voltage <= 0) {
@@ -254,24 +254,24 @@ void MainWindow::addDataPoint()
         return;
     }
     
-    // 检查电流是否为0，避免除以0
+    // Check if current is 0 to avoid division by 0
     if (qFuzzyIsNull(current)) {
         QMessageBox::warning(this, "Invalid Input", "Current value cannot be zero.");
         return;
     }
     
-    // 计算电阻值
+    // Calculate resistance value
     double resistance = voltage / current;
     
-    // 添加到数据中
+    // Add to data
     originalSpacings.append(spacing);
     originalResistances.append(resistance);
     dataPointEnabled.append(true);
     
-    // 更新列表和图表
+    // Update list and chart
     updateDataPointList();
     
-    // 重新计算并绘制
+    // Recalculate and redraw
     onPlotDataReady(originalSpacings, originalResistances, currentSlope, currentIntercept);
 }
 
@@ -279,13 +279,13 @@ void MainWindow::removeDataPoint()
 {
     int selectedIndex = dataPointList->currentRow();
     if (selectedIndex >= 0 && selectedIndex < dataPointEnabled.size()) {
-        // 禁用选中的数据点
+        // Disable selected data point
         dataPointEnabled[selectedIndex] = false;
         
-        // 更新列表
+        // Update list
         updateDataPointList();
         
-        // 重新计算并绘制
+        // Recalculate and redraw
         onPlotDataReady(originalSpacings, originalResistances, currentSlope, currentIntercept);
     }
 }
@@ -330,7 +330,7 @@ void MainWindow::onAnalysisComplete(const QString &result)
     progressBar->setValue(100);
     analyzeButton->setEnabled(true);
 
-    // 进度条完成后隐藏
+    // Hide progress bar when complete
     QTimer::singleShot(2000, this, [this]() {
         progressBar->setVisible(false);
         progressBar->setValue(0);
@@ -341,26 +341,26 @@ void MainWindow::onPlotDataReady(const QVector<double> &spacings,
                                const QVector<double> &resistances,
                                double slope, double intercept)
 {
-    // 存储原始数据
+    // Store original data
     originalSpacings = spacings;
     originalResistances = resistances;
     currentSlope = slope;
     currentIntercept = intercept;
     
-    // 初始化数据点启用状态
+    // Initialize data point enable status
     dataPointEnabled.resize(spacings.size());
     for (int i = 0; i < dataPointEnabled.size(); ++i) {
         dataPointEnabled[i] = true;
     }
     
-    // 更新数据点列表
+    // Update data point list
     updateDataPointList();
     
-    // 清除之前的系列和坐标轴
+    // Clear previous series and axes
     chart->removeAllSeries();
-    chart->axes().clear(); // 清除所有坐标轴
+    chart->axes().clear(); // Clear all axes
 
-    // 收集启用的数据点
+    // Collect enabled data points
     QVector<double> enabledSpacings, enabledResistances;
     for (int i = 0; i < originalSpacings.size(); ++i) {
         if (dataPointEnabled[i]) {
@@ -374,45 +374,45 @@ void MainWindow::onPlotDataReady(const QVector<double> &spacings,
         return;
     }
 
-    // 创建散点系列用于测量数据
+    // Create scatter series for measurement data
     QScatterSeries *scatterSeries = new QScatterSeries();
     scatterSeries->setName("Measured Data");
     scatterSeries->setMarkerSize(12);
     scatterSeries->setColor(QColor(255, 0, 0));
     scatterSeries->setBorderColor(QColor(200, 0, 0));
 
-    // 创建线系列用于拟合
+    // Create line series for fitting
     QLineSeries *lineSeries = new QLineSeries();
     lineSeries->setName("Linear Fit");
     lineSeries->setColor(QColor(0, 0, 255));
     lineSeries->setPen(QPen(QBrush(QColor(0, 0, 255)), 2));
 
-    // 添加数据点
+    // Add data points
     double minX = enabledSpacings[0], maxX = enabledSpacings[0];
     double minY = enabledResistances[0], maxY = enabledResistances[0];
 
     for (qsizetype i = 0; i < enabledSpacings.size(); ++i) {
         scatterSeries->append(enabledSpacings[i], enabledResistances[i]);
 
-        // 更新范围
+        // Update range
         if (enabledSpacings[i] < minX) minX = enabledSpacings[i];
         if (enabledSpacings[i] > maxX) maxX = enabledSpacings[i];
         if (enabledResistances[i] < minY) minY = enabledResistances[i];
         if (enabledResistances[i] > maxY) maxY = enabledResistances[i];
     }
 
-    // 添加拟合线数据点（扩展范围以获得更好的视觉效果）
+    // Add fitted line data points (extend range for better visual effect)
     double extendedMinX = minX - (maxX - minX) * 0.1;
     double extendedMaxX = maxX + (maxX - minX) * 0.1;
 
     lineSeries->append(extendedMinX, currentSlope * extendedMinX + currentIntercept);
     lineSeries->append(extendedMaxX, currentSlope * extendedMaxX + currentIntercept);
 
-    // 添加系列到图表
+    // Add series to chart
     chart->addSeries(scatterSeries);
     chart->addSeries(lineSeries);
 
-    // 配置坐标轴
+    // Configure axes
     QValueAxis *axisX = new QValueAxis();
     QValueAxis *axisY = new QValueAxis();
 
@@ -421,7 +421,7 @@ void MainWindow::onPlotDataReady(const QVector<double> &spacings,
     axisX->setLabelFormat("%.1f");
     axisY->setLabelFormat("%.2f");
 
-    // 设置坐标轴范围
+    // Set axis range
     axisX->setRange(minX - (maxX - minX) * 0.05, maxX + (maxX - minX) * 0.05);
     axisY->setRange(minY - (maxY - minY) * 0.05, maxY + (maxY - minY) * 0.05);
 
@@ -432,7 +432,7 @@ void MainWindow::onPlotDataReady(const QVector<double> &spacings,
     lineSeries->attachAxis(axisX);
     lineSeries->attachAxis(axisY);
 
-    // 更新图表标题以包含拟合信息
+    // Update chart title to include fit information
     chart->setTitle(QString("TLM Analysis - R = %1 × L + %2")
                    .arg(currentSlope, 0, 'f', 4)
                    .arg(currentIntercept, 0, 'f', 4));
@@ -459,7 +459,7 @@ void MainWindow::updateDataPointList()
         
         QListWidgetItem *item = new QListWidgetItem(itemText);
         if (!dataPointEnabled[i]) {
-            item->setForeground(QColor(128, 128, 128)); // 灰色显示已移除的点
+            item->setForeground(QColor(128, 128, 128)); // Gray out removed points
         }
         dataPointList->addItem(item);
     }
