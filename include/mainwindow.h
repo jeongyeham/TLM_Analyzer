@@ -55,41 +55,41 @@ private:
     QScopedPointer<TLMAnalyzer> analyzer;
 
     // UI Components
-    QWidget *centralWidget;
-    QVBoxLayout *mainLayout;
+    QWidget *centralWidget{};
+    QVBoxLayout *mainLayout{};
 
-    QLineEdit *folderPathEdit;
-    QPushButton *browseButton;
+    QLineEdit *folderPathEdit{};
+    QPushButton *browseButton{};
 
-    QPushButton *analyzeButton;
-    QPushButton *exportButton;
+    QPushButton *analyzeButton{};
+    QPushButton *exportButton{};
 
-    QPushButton *addPointButton;
-    QPushButton *removePointButton;
+    QPushButton *addPointButton{};
+    QPushButton *removePointButton{};
 
-    QLineEdit *voltageEdit;
+    QLineEdit *voltageEdit{};
 
-    QTextEdit *resultText;
+    QTextEdit *resultText{};
 
-    QProgressBar *progressBar;
+    QProgressBar *progressBar{};
 
-    QListWidget *dataPointList;
+    QListWidget *dataPointList{};
 
-    QChartView *chartView;
-    QChart *chart;
+    QChartView *chartView{};
+    QChart *chart{};
 
     QString currentFolder;
     
     // Menu actions
-    QAction *aboutAction;
+    QAction *aboutAction{};
     
     // Data storage
     QVector<double> originalSpacings;
     QVector<double> originalResistances;
     QVector<double> originalCurrents;  // Store current values for each data point
     QVector<bool> dataPointEnabled;  // Mark whether data points are enabled
-    double currentSlope;
-    double currentIntercept;
+    double currentSlope{};
+    double currentIntercept{};
 };
 
 #endif //RC0_01_MAINWINDOW_H

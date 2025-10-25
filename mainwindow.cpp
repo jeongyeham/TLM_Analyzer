@@ -56,8 +56,8 @@ void MainWindow::setupUI()
     mainLayout = new QVBoxLayout(centralWidget);
 
     // Folder selection area
-    QGroupBox *folderGroup = new QGroupBox("Data Selection");
-    QHBoxLayout *folderLayout = new QHBoxLayout(folderGroup);
+    auto folderGroup = new QGroupBox("Data Selection");
+    auto folderLayout = new QHBoxLayout(folderGroup);
     folderPathEdit = new QLineEdit();
     folderPathEdit->setPlaceholderText("Select folder containing CSV files...");
     browseButton = new QPushButton("Browse...");
@@ -65,10 +65,10 @@ void MainWindow::setupUI()
     folderLayout->addWidget(browseButton);
 
     // Parameter setting area
-    QGroupBox *paramGroup = new QGroupBox("Analysis Parameters");
-    QGridLayout *paramLayout = new QGridLayout(paramGroup);
+    auto paramGroup = new QGroupBox("Analysis Parameters");
+    auto paramLayout = new QGridLayout(paramGroup);
 
-    QDoubleValidator *doubleValidator = new QDoubleValidator(this);
+    auto doubleValidator = new QDoubleValidator(this);
     doubleValidator->setBottom(0);
 
     voltageEdit = new QLineEdit("1.0");
@@ -78,7 +78,7 @@ void MainWindow::setupUI()
     paramLayout->addWidget(voltageEdit, 0, 1);
 
     // Button area
-    QHBoxLayout *buttonLayout = new QHBoxLayout();
+    auto buttonLayout = new QHBoxLayout();
     analyzeButton = new QPushButton("Analyze Data");
     analyzeButton->setStyleSheet("QPushButton { background-color: #2196F3; color: white; font-weight: bold; padding: 8px; }");
     exportButton = new QPushButton("Export Plot");
@@ -92,13 +92,13 @@ void MainWindow::setupUI()
     progressBar->setVisible(false);
 
     // Data point management area
-    QGroupBox *dataPointGroup = new QGroupBox("Data Points Management");
-    QHBoxLayout *dataPointLayout = new QHBoxLayout(dataPointGroup);
+    auto dataPointGroup = new QGroupBox("Data Points Management");
+    auto dataPointLayout = new QHBoxLayout(dataPointGroup);
     
     dataPointList = new QListWidget();
     dataPointList->setSelectionMode(QAbstractItemView::SingleSelection);
     
-    QVBoxLayout *dataPointButtonLayout = new QVBoxLayout();
+    auto dataPointButtonLayout = new QVBoxLayout();
     addPointButton = new QPushButton("Add Point");
     removePointButton = new QPushButton("Remove Point");
     removePointButton->setEnabled(false);
@@ -110,16 +110,16 @@ void MainWindow::setupUI()
     dataPointLayout->addLayout(dataPointButtonLayout);
 
     // Chart area
-    QGroupBox *chartGroup = new QGroupBox("TLM Analysis Plot");
-    QVBoxLayout *chartLayout = new QVBoxLayout(chartGroup);
+    auto chartGroup = new QGroupBox("TLM Analysis Plot");
+    auto chartLayout = new QVBoxLayout(chartGroup);
     chartView = new QChartView();
     chartView->setMinimumSize(800, 500);
     chartView->setRenderHint(QPainter::Antialiasing);
     chartLayout->addWidget(chartView);
 
     // Results area
-    QGroupBox *resultGroup = new QGroupBox("Analysis Results");
-    QVBoxLayout *resultLayout = new QVBoxLayout(resultGroup);
+    auto resultGroup = new QGroupBox("Analysis Results");
+    auto resultLayout = new QVBoxLayout(resultGroup);
     resultText = new QTextEdit();
     resultText->setReadOnly(true);
     resultText->setMaximumHeight(250);
@@ -305,9 +305,9 @@ void MainWindow::showAbout()
     QDialog aboutDialog(this);
     aboutDialog.setWindowTitle("About TLM Analyzer");
     
-    QVBoxLayout *layout = new QVBoxLayout(&aboutDialog);
+    auto layout = new QVBoxLayout(&aboutDialog);
     
-    QTextBrowser *textBrowser = new QTextBrowser();
+    auto textBrowser = new QTextBrowser();
     textBrowser->setOpenExternalLinks(true);
     textBrowser->setHtml(
         "<h2>TLM Analyzer</h2>"
@@ -325,7 +325,7 @@ void MainWindow::showAbout()
     
     layout->addWidget(textBrowser);
     
-    QPushButton *closeButton = new QPushButton("Close");
+    auto closeButton = new QPushButton("Close");
     connect(closeButton, &QPushButton::clicked, &aboutDialog, &QDialog::accept);
     layout->addWidget(closeButton);
     
@@ -362,8 +362,8 @@ void MainWindow::onPlotDataReady(const QVector<double> &spacings,
     
     // Initialize data point enable status
     dataPointEnabled.resize(spacings.size());
-    for (int i = 0; i < dataPointEnabled.size(); ++i) {
-        dataPointEnabled[i] = true;
+    for (bool & i : dataPointEnabled) {
+        i = true;
     }
     
     // Update data point list
@@ -392,14 +392,14 @@ void MainWindow::onPlotDataReady(const QVector<double> &spacings,
     }
 
     // Create scatter series for measurement data
-    QScatterSeries *scatterSeries = new QScatterSeries();
+    auto *scatterSeries = new QScatterSeries();
     scatterSeries->setName("Measured Data");
     scatterSeries->setMarkerSize(12);
     scatterSeries->setColor(QColor(255, 0, 0));
     scatterSeries->setBorderColor(QColor(200, 0, 0));
 
     // Create line series for fitting
-    QLineSeries *lineSeries = new QLineSeries();
+    auto *lineSeries = new QLineSeries();
     lineSeries->setName("Linear Fit");
     lineSeries->setColor(QColor(0, 0, 255));
     lineSeries->setPen(QPen(QBrush(QColor(0, 0, 255)), 2));
@@ -430,8 +430,8 @@ void MainWindow::onPlotDataReady(const QVector<double> &spacings,
     chart->addSeries(lineSeries);
 
     // Configure axes
-    QValueAxis *axisX = new QValueAxis();
-    QValueAxis *axisY = new QValueAxis();
+    auto *axisX = new QValueAxis();
+    auto *axisY = new QValueAxis();
 
     axisX->setTitleText("Pad Spacing (μm)");
     axisY->setTitleText("Total Resistance (Ω)");
@@ -455,7 +455,7 @@ void MainWindow::onPlotDataReady(const QVector<double> &spacings,
     double Rouc = (Rc * Rc / Rsh) * 1e-2; // Specific contact resistivity in Ω·cm²
 
     // Add text item to display parameters on chart
-    QGraphicsSimpleTextItem* textItem = new QGraphicsSimpleTextItem(chart);
+    auto* textItem = new QGraphicsSimpleTextItem(chart);
     QString parameterText = QString("Rsh: %1 Ω/sq\nRc: %2 Ω·mm\nρc: %3 Ω·cm²")
                             .arg(Rsh, 0, 'f', 3)
                             .arg(Rc, 0, 'f', 3)
@@ -471,7 +471,7 @@ void MainWindow::onPlotDataReady(const QVector<double> &spacings,
     textItem->setFont(font);
     
     // Add a rectangle background with margin for better visibility
-    QGraphicsRectItem* backgroundRect = new QGraphicsRectItem(chart);
+    auto* backgroundRect = new QGraphicsRectItem(chart);
     QRectF textBounds = textItem->boundingRect();
     // Add some padding around the text
     qreal padding = 7.0;
@@ -512,7 +512,7 @@ void MainWindow::updateDataPointList()
             itemText += " (Removed)";
         }
         
-        QListWidgetItem *item = new QListWidgetItem(itemText);
+        auto *item = new QListWidgetItem(itemText);
         if (!dataPointEnabled[i]) {
             item->setForeground(QColor(128, 128, 128)); // Gray out removed points
         }
