@@ -19,10 +19,11 @@ signals:
     void analysisComplete(const QString &result);
     void plotDataReady(const QVector<double> &spacings,
                       const QVector<double> &resistances,
+                      const QVector<double> &currents,
                       double slope, double intercept);
 
 private:
-    static double getResistance(const QString &filePath, double voltage);
+    static double getResistance(const QString &filePath, double voltage, double &current);
     double extractSpacingFromFilename(const QString &filename) const;
 
     static bool linearRegression(const QVector<double> &x, const QVector<double> &y,
