@@ -449,6 +449,43 @@ void MainWindow::onPlotDataReady(const QVector<double> &spacings,
     lineSeries->attachAxis(axisX);
     lineSeries->attachAxis(axisY);
 
+    // Calculate TLM parameters for display
+    double Rsh = currentSlope * 100.0;  // Sheet resistance in Ω/sq
+    double Rc = currentIntercept / 20.0; // Contact resistance in Ω·mm
+    double Rouc = (Rc * Rc / Rsh) * 1e-2; // Specific contact resistivity in Ω·cm²
+
+    // Add text item to display parameters on chart
+    QGraphicsSimpleTextItem* textItem = new QGraphicsSimpleTextItem(chart);
+    QString parameterText = QString("Rsh: %1 Ω/sq\nRc: %2 Ω·mm\nρc: %3 Ω·cm²")
+                            .arg(Rsh, 0, 'f', 3)
+                            .arg(Rc, 0, 'f', 3)
+                            .arg(Rouc, 0, 'e', 3);
+                            
+    textItem->setText(parameterText);
+    textItem->setPos(chart->plotArea().left() + 150, chart->plotArea().top() + 10);
+    textItem->setBrush(QBrush(Qt::black));
+    QFont font = textItem->font();
+    font.setPointSize(16);         // Smaller font size
+    font.setItalic(true);         // Italic font
+    font.setBold(true);           // Bold font
+    textItem->setFont(font);
+    
+    // Add a rectangle background with margin for better visibility
+    QGraphicsRectItem* backgroundRect = new QGraphicsRectItem(chart);
+    QRectF textBounds = textItem->boundingRect();
+    // Add some padding around the text
+    qreal padding = 7.0;
+    QRectF rectWithPadding(textBounds.left() - padding, 
+                          textBounds.top() - padding,
+                          textBounds.width() + 2 * padding, 
+                          textBounds.height() + 2 * padding);
+    
+    backgroundRect->setRect(rectWithPadding);
+    backgroundRect->setPos(chart->plotArea().left() + 150, chart->plotArea().top() + 10);
+    backgroundRect->setBrush(QBrush(QColor(255, 255, 255, 220))); // More opaque white background
+    backgroundRect->setPen(QPen(QColor(50, 50, 50), 2)); // Darker border with thicker line
+    backgroundRect->setZValue(-1); // Behind the text
+
     // Update chart title to include fit information
     chart->setTitle(QString("TLM Analysis - R = %1 × L + %2")
                    .arg(currentSlope, 0, 'f', 4)
