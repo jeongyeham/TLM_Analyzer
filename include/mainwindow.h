@@ -5,6 +5,8 @@
 #include <QtCharts/QChartView>
 #include <QtCharts/QValueAxis>
 #include <QVector>
+#include <QGraphicsRectItem>
+#include <QGraphicsSimpleTextItem>
 
 // Forward declarations
 QT_BEGIN_NAMESPACE
@@ -82,6 +84,10 @@ private:
     
     // Menu actions
     QAction *aboutAction{};
+    
+    // Chart text items
+    QGraphicsRectItem *backgroundRect{};
+    QGraphicsSimpleTextItem *textItem{};
     
     // Data storage
     QVector<double> originalSpacings;

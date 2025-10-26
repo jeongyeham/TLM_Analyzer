@@ -414,6 +414,17 @@ void MainWindow::onPlotDataReady(const QVector<double> &spacings,
     for (QAbstractAxis *axis : chart->axes()) {
         chart->removeAxis(axis);
     }
+    
+    // Remove any existing parameter text items and background rectangles
+    if (textItem) {
+        delete textItem;
+        textItem = nullptr;
+    }
+    
+    if (backgroundRect) {
+        delete backgroundRect;
+        backgroundRect = nullptr;
+    }
 
     // Collect enabled data points
     QVector<double> enabledSpacings, enabledResistances;
@@ -493,7 +504,7 @@ void MainWindow::onPlotDataReady(const QVector<double> &spacings,
     double Rouc = (Rc * Rc / Rsh) * 1e-2; // Specific contact resistivity in Ω·cm²
 
     // Add text item to display parameters on chart
-    auto* textItem = new QGraphicsSimpleTextItem(chart);
+    textItem = new QGraphicsSimpleTextItem(chart);
     QString parameterText = QString("Rsh: %1 Ω/sq\nRc: %2 Ω·mm\nρc: %3 Ω·cm²")
                             .arg(Rsh, 0, 'f', 3)
                             .arg(Rc, 0, 'f', 3)
@@ -509,7 +520,7 @@ void MainWindow::onPlotDataReady(const QVector<double> &spacings,
     textItem->setFont(font);
     
     // Add a rectangle background with margin for better visibility
-    auto* backgroundRect = new QGraphicsRectItem(chart);
+    backgroundRect = new QGraphicsRectItem(chart);
     QRectF textBounds = textItem->boundingRect();
     // Add some padding around the text
     qreal padding = 7.0;
