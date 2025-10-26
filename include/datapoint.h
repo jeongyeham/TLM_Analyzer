@@ -2,6 +2,7 @@
 #define TLMANALYZER_DATAPOINT_H
 
 #include <QMetaType>
+#include <QVector>
 
 struct DataPoint {
     double spacing;
