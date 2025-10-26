@@ -293,10 +293,48 @@ void MainWindow::removeDataPoint()
         // Update list
         updateDataPointList();
         
-        // Recalculate and redraw
-        // Create a temporary currents vector with zeros for existing points
-        QVector<double> tempCurrents = originalCurrents;
-        onPlotDataReady(originalSpacings, originalResistances, tempCurrents, currentSlope, currentIntercept);
+        // Recalculate and redraw with filtered data
+        QVector<double> enabledSpacings, enabledResistances, enabledCurrents;
+        for (int i = 0; i < originalSpacings.size(); ++i) {
+            if (dataPointEnabled[i]) {
+                enabledSpacings.append(originalSpacings[i]);
+                enabledResistances.append(originalResistances[i]);
+                enabledCurrents.append(originalCurrents[i]);
+            }
+        }
+        
+        // If we have at least 2 points, recalculate the linear regression
+        if (enabledSpacings.size() >= 2) {
+            // Perform linear regression on enabled points
+            double sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+            int n = enabledSpacings.size();
+            
+            for (int i = 0; i < n; ++i) {
+                double x = enabledSpacings[i];
+                double y = enabledResistances[i];
+                sumX += x;
+                sumY += y;
+                sumXY += x * y;
+                sumXX += x * x;
+            }
+            
+            double slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+            double intercept = (sumY - slope * sumX) / n;
+            
+            onPlotDataReady(enabledSpacings, enabledResistances, enabledCurrents, slope, intercept);
+        } else if (!enabledSpacings.isEmpty()) {
+            // With only 1 point, we can't calculate a meaningful regression line
+            // Just show the point without the line
+            onPlotDataReady(enabledSpacings, enabledResistances, enabledCurrents, 0.0, enabledResistances.first());
+        } else {
+            // No points left
+            chart->removeAllSeries();
+            for (QAbstractAxis *axis : chart->axes()) {
+                chart->removeAxis(axis);
+            }
+            chart->setTitle("TLM Analysis - Resistance vs Pad Spacing");
+            resultText->setText("No data points available for analysis.");
+        }
     }
 }
 
