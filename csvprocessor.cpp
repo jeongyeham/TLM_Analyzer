@@ -1,10 +1,12 @@
 #include "include/csvprocessor.h"
+#include "include/datapoint.h"
 #include <QDir>
 #include <QFile>
 #include <QTextStream>
 #include <QFileInfo>
 #include <QDebug>
 #include <QRegularExpression>
+#include <algorithm>
 
 QVector<DataPoint> CSVProcessor::processFolder(const QString &folderPath, double voltage)
 {
@@ -27,6 +29,11 @@ QVector<DataPoint> CSVProcessor::processFolder(const QString &folderPath, double
             }
         }
     }
+    
+    // Sort data points by spacing in ascending order
+    std::sort(dataPoints.begin(), dataPoints.end(), [](const DataPoint& a, const DataPoint& b) {
+        return a.spacing < b.spacing;
+    });
     
     return dataPoints;
 }

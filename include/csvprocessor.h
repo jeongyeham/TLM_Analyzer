@@ -1,8 +1,6 @@
 #ifndef TLMANALYZER_CSVPARSER_H
 #define TLMANALYZER_CSVPARSER_H
 
-#include <QString>
-#include <QVector>
 #include "datapoint.h"
 
 class CSVProcessor {
