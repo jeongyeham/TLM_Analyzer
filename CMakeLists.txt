@@ -21,7 +21,7 @@ find_package(Qt6 COMPONENTS
     REQUIRED)
 
 # 添加可执行文件
-add_executable(${PROJECT_NAME}
+add_executable(${PROJECT_NAME} WIN32
     main.cpp
     mainwindow.cpp
     tlmanalyzer.cpp
