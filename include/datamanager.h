@@ -17,9 +17,14 @@ public:
     void removeDataPoint(int index);
     void setDataPointEnabled(int index, bool enabled);
     void clearDataPoints();
+    void clearDisabledDataPoints();
     
     const QVector<DataPoint>& getDataPoints() const;
     QVector<DataPoint> getEnabledDataPoints() const;
+    
+    void addManualDataPoint(double spacing, double current, double voltage);
+    int size() const;
+    const DataPoint& at(int index) const;
     
     bool calculateTLMResults(Calculator::TLMResult &result) const;
     
@@ -27,6 +32,7 @@ signals:
     void dataChanged();
 
 private:
+    void sortDataPoints();
     QVector<DataPoint> dataPoints;
 };
 
