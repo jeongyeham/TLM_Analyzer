@@ -24,9 +24,14 @@ find_package(Qt6 COMPONENTS
 add_executable(${PROJECT_NAME} WIN32
     main.cpp
     mainwindow.cpp
-    tlmanalyzer.cpp
+    csvprocessor.cpp
+    calculator.cpp
+    datamanager.cpp
         include/mainwindow.h
-        include/tlmanalyzer.h
+        include/datapoint.h
+        include/csvprocessor.h
+        include/calculator.h
+        include/datamanager.h
 )
 
 # 设置包含目录
