@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.13)
 
 project(TLMAnalyzer)
 
-set(CMAKE_PREFIX_PATH "D:/Qt/6.10.0/msvc2022_64/lib/cmake")
+set(CMAKE_PREFIX_PATH "E:/Qt/6.10.0/msvc2022_64/lib/cmake")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
