@@ -22,7 +22,7 @@ class QAction;
 class QListWidget;
 QT_END_NAMESPACE
 
-class TLMAnalyzer;
+class DataManager;
 
 class MainWindow : public QMainWindow
 {
@@ -37,24 +37,28 @@ private slots:
     void analyzeData();
     void exportPlot();
     void addDataPoint();
-    void removeDataPoint();
+    void removeDataPoint() const;
+    void clearDisabledPoints() const;
     void showAbout();
-    void onAnalysisComplete(const QString &result);
     void onPlotDataReady(const QVector<double> &spacings,
                         const QVector<double> &resistances,
                         const QVector<double> &currents,
                         double slope, double intercept);
-    void onDataPointSelectionChanged();
+    void onDataPointSelectionChanged() const;
+    void onDataChanged();
 
 private:
     void setupUI();
     void setupMenu();
     void setupConnections();
     void setupChart();
-    void updateDataPointList();
+    void updateDataPointList() const;
 
     // Use smart pointer to manage object lifetime
-    QScopedPointer<TLMAnalyzer> analyzer;
+    // QScopedPointer<TLMAnalyzer> analyzer; // Remove this legacy analyzer
+
+    // Data manager
+    DataManager* dataManager;
 
     // UI Components
     QWidget *centralWidget{};
@@ -68,6 +72,7 @@ private:
 
     QPushButton *addPointButton{};
     QPushButton *removePointButton{};
+    QPushButton *clearDisabledPointsButton{};
 
     QLineEdit *voltageEdit{};
 
@@ -88,14 +93,6 @@ private:
     // Chart text items
     QGraphicsRectItem *backgroundRect{};
     QGraphicsSimpleTextItem *textItem{};
-    
-    // Data storage
-    QVector<double> originalSpacings;
-    QVector<double> originalResistances;
-    QVector<double> originalCurrents;  // Store current values for each data point
-    QVector<bool> dataPointEnabled;  // Mark whether data points are enabled
-    double currentSlope{};
-    double currentIntercept{};
 };
 
 #endif //RC0_01_MAINWINDOW_H

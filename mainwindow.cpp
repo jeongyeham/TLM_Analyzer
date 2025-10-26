@@ -2,7 +2,9 @@
 // Created by jeong on 2025/10/25.
 //
 #include "mainwindow.h"
-#include "tlmanalyzer.h"
+#include "include/datamanager.h"
+#include "include/csvprocessor.h"
+#include "include/calculator.h"
 #include <QMenuBar>
 #include <QMenu>
 #include <QGridLayout>
@@ -24,7 +26,7 @@
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
-    , analyzer(new TLMAnalyzer(this))
+    , dataManager(new DataManager(this))
 {
     setupMenu();
     setupUI();
@@ -69,7 +71,9 @@ void MainWindow::setupUI()
     auto paramLayout = new QGridLayout(paramGroup);
 
     auto doubleValidator = new QDoubleValidator(this);
-    doubleValidator->setBottom(0);
+    // Allow negative values for voltage
+    doubleValidator->setBottom(-1000000); // Set a reasonable lower limit
+    doubleValidator->setTop(1000000);     // Set a reasonable upper limit
 
     voltageEdit = new QLineEdit("1.0");
     voltageEdit->setValidator(doubleValidator);
@@ -101,9 +105,11 @@ void MainWindow::setupUI()
     auto dataPointButtonLayout = new QVBoxLayout();
     addPointButton = new QPushButton("Add Point");
     removePointButton = new QPushButton("Remove Point");
+    clearDisabledPointsButton = new QPushButton("Clear Removed Points");
     removePointButton->setEnabled(false);
     dataPointButtonLayout->addWidget(addPointButton);
     dataPointButtonLayout->addWidget(removePointButton);
+    dataPointButtonLayout->addWidget(clearDisabledPointsButton);
     dataPointButtonLayout->addStretch();
     
     dataPointLayout->addWidget(dataPointList, 1);
@@ -143,15 +149,11 @@ void MainWindow::setupConnections()
     connect(exportButton, &QPushButton::clicked, this, &MainWindow::exportPlot);
     connect(addPointButton, &QPushButton::clicked, this, &MainWindow::addDataPoint);
     connect(removePointButton, &QPushButton::clicked, this, &MainWindow::removeDataPoint);
+    connect(clearDisabledPointsButton, &QPushButton::clicked, this, &MainWindow::clearDisabledPoints);
     connect(dataPointList, &QListWidget::itemSelectionChanged, this, &MainWindow::onDataPointSelectionChanged);
 
-    connect(analyzer.data(), &TLMAnalyzer::analysisComplete, this, &MainWindow::onAnalysisComplete);
-    connect(analyzer.data(), &TLMAnalyzer::plotDataReady, this, [this](const QVector<double> &spacings,
-                                                                      const QVector<double> &resistances,
-                                                                      const QVector<double> &currents,
-                                                                      double slope, double intercept) {
-        this->onPlotDataReady(spacings, resistances, currents, slope, intercept);
-    });
+    // Connect data manager signals
+    connect(dataManager, &DataManager::dataChanged, this, &MainWindow::onDataChanged);
 }
 
 void MainWindow::setupChart()
@@ -201,7 +203,7 @@ void MainWindow::analyzeData()
 
     bool ok;
     double voltage = voltageEdit->text().toDouble(&ok);
-    if (!ok || voltage == 0) {
+    if (!ok || qFuzzyIsNull(voltage)) {
         QMessageBox::warning(this, "Warning", "Please enter a valid non-zero voltage.");
         return;
     }
@@ -210,7 +212,40 @@ void MainWindow::analyzeData()
     progressBar->setValue(0);
     analyzeButton->setEnabled(false);
 
-    analyzer->analyzeFolder(currentFolder, voltage);
+    // Process CSV files using CSVProcessor
+    QVector<DataPoint> dataPoints = CSVProcessor::processFolder(currentFolder, voltage);
+    progressBar->setValue(30); // 30% progress after folder processing
+    
+    // Clear existing data and add new data points
+    dataManager->clearDataPoints();
+    for (int i = 0; i < dataPoints.size(); ++i) {
+        dataManager->addDataPoint(dataPoints.at(i));
+        // Update progress based on data points processed
+        int progress = 30 + (i * 40 / dataPoints.size());
+        progressBar->setValue(progress);
+    }
+    
+    // Update result text with detailed information
+    QString result = QString("Analysis complete.\n\n"
+                            "Data Points Processed: %1\n"
+                            "Applied Voltage: %2 V\n")
+                            .arg(dataPoints.size())
+                            .arg(voltage, 0, 'f', 3);
+    resultText->setText(result);
+    progressBar->setValue(80); // 80% progress after data setup
+    
+    // Manually trigger data changed to update the analysis results
+    onDataChanged();
+    
+    // Enable analyze button
+    analyzeButton->setEnabled(true);
+    progressBar->setValue(100); // 100% progress when complete
+    
+    // Hide progress bar after a delay, but preserve any text that might be added later
+    QTimer::singleShot(2000, this, [this]() {
+        progressBar->setVisible(false);
+        progressBar->setValue(0);
+    });
 }
 
 void MainWindow::exportPlot()
@@ -254,8 +289,8 @@ void MainWindow::addDataPoint()
     // Get the currently set resistance voltage value
     bool voltageOk;
     double voltage = voltageEdit->text().toDouble(&voltageOk);
-    if (!voltageOk || voltage <= 0) {
-        QMessageBox::warning(this, "Invalid Voltage", "Please enter a valid resistance voltage value greater than zero.");
+    if (!voltageOk || qFuzzyIsNull(voltage)) {
+        QMessageBox::warning(this, "Invalid Voltage", "Please enter a valid non-zero resistance voltage value.");
         return;
     }
     
@@ -265,77 +300,21 @@ void MainWindow::addDataPoint()
         return;
     }
     
-    // Calculate resistance value
-    double resistance = voltage / current;
-    
-    // Add to data
-    originalSpacings.append(spacing);
-    originalResistances.append(resistance);
-    originalCurrents.append(current);  // Store current value
-    dataPointEnabled.append(true);
-    
-    // Update list and chart
-    updateDataPointList();
-    
-    // Recalculate and redraw
-    // Create a temporary currents vector with zeros for existing points and the new current value
-    QVector<double> tempCurrents = originalCurrents;
-    onPlotDataReady(originalSpacings, originalResistances, tempCurrents, currentSlope, currentIntercept);
+    // Add data point through DataManager
+    dataManager->addManualDataPoint(spacing, current, voltage);
 }
 
-void MainWindow::removeDataPoint()
-{
+void MainWindow::removeDataPoint() const {
     int selectedIndex = dataPointList->currentRow();
-    if (selectedIndex >= 0 && selectedIndex < dataPointEnabled.size()) {
+    if (selectedIndex >= 0 && selectedIndex < dataManager->size()) {
         // Disable selected data point
-        dataPointEnabled[selectedIndex] = false;
-        
-        // Update list
-        updateDataPointList();
-        
-        // Recalculate and redraw with filtered data
-        QVector<double> enabledSpacings, enabledResistances, enabledCurrents;
-        for (int i = 0; i < originalSpacings.size(); ++i) {
-            if (dataPointEnabled[i]) {
-                enabledSpacings.append(originalSpacings[i]);
-                enabledResistances.append(originalResistances[i]);
-                enabledCurrents.append(originalCurrents[i]);
-            }
-        }
-        
-        // If we have at least 2 points, recalculate the linear regression
-        if (enabledSpacings.size() >= 2) {
-            // Perform linear regression on enabled points
-            double sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
-            int n = enabledSpacings.size();
-            
-            for (int i = 0; i < n; ++i) {
-                double x = enabledSpacings[i];
-                double y = enabledResistances[i];
-                sumX += x;
-                sumY += y;
-                sumXY += x * y;
-                sumXX += x * x;
-            }
-            
-            double slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
-            double intercept = (sumY - slope * sumX) / n;
-            
-            onPlotDataReady(enabledSpacings, enabledResistances, enabledCurrents, slope, intercept);
-        } else if (!enabledSpacings.isEmpty()) {
-            // With only 1 point, we can't calculate a meaningful regression line
-            // Just show the point without the line
-            onPlotDataReady(enabledSpacings, enabledResistances, enabledCurrents, 0.0, enabledResistances.first());
-        } else {
-            // No points left
-            chart->removeAllSeries();
-            for (QAbstractAxis *axis : chart->axes()) {
-                chart->removeAxis(axis);
-            }
-            chart->setTitle("TLM Analysis - Resistance vs Pad Spacing");
-            resultText->setText("No data points available for analysis.");
-        }
+        dataManager->setDataPointEnabled(selectedIndex, false);
     }
+}
+
+void MainWindow::clearDisabledPoints() const {
+    // Clear all disabled data points
+    dataManager->clearDisabledDataPoints();
 }
 
 void MainWindow::showAbout()
@@ -372,41 +351,11 @@ void MainWindow::showAbout()
     aboutDialog.exec();
 }
 
-void MainWindow::onAnalysisComplete(const QString &result)
-{
-    resultText->setText(result);
-    progressBar->setValue(100);
-    analyzeButton->setEnabled(true);
-
-    // Hide progress bar when complete
-    QTimer::singleShot(2000, this, [this]() {
-        progressBar->setVisible(false);
-        progressBar->setValue(0);
-    });
-}
-
 void MainWindow::onPlotDataReady(const QVector<double> &spacings,
                                const QVector<double> &resistances,
                                const QVector<double> &currents,
                                double slope, double intercept)
 {
-    // Store original data
-    originalSpacings = spacings;
-    originalResistances = resistances;
-    originalCurrents = currents;  // Store current values
-    
-    currentSlope = slope;
-    currentIntercept = intercept;
-    
-    // Initialize data point enable status
-    dataPointEnabled.resize(spacings.size());
-    for (bool & i : dataPointEnabled) {
-        i = true;
-    }
-    
-    // Update data point list
-    updateDataPointList();
-    
     // Clear previous series and axes
     chart->removeAllSeries();
     
@@ -426,16 +375,7 @@ void MainWindow::onPlotDataReady(const QVector<double> &spacings,
         backgroundRect = nullptr;
     }
 
-    // Collect enabled data points
-    QVector<double> enabledSpacings, enabledResistances;
-    for (int i = 0; i < originalSpacings.size(); ++i) {
-        if (dataPointEnabled[i]) {
-            enabledSpacings.append(originalSpacings[i]);
-            enabledResistances.append(originalResistances[i]);
-        }
-    }
-
-    if (enabledSpacings.isEmpty()) {
+    if (spacings.isEmpty()) {
         resultText->setText("No data points available for analysis.");
         return;
     }
@@ -454,25 +394,25 @@ void MainWindow::onPlotDataReady(const QVector<double> &spacings,
     lineSeries->setPen(QPen(QBrush(QColor(0, 0, 255)), 2));
 
     // Add data points
-    double minX = enabledSpacings[0], maxX = enabledSpacings[0];
-    double minY = enabledResistances[0], maxY = enabledResistances[0];
+    double minX = spacings[0], maxX = spacings[0];
+    double minY = resistances[0], maxY = resistances[0];
 
-    for (qsizetype i = 0; i < enabledSpacings.size(); ++i) {
-        scatterSeries->append(enabledSpacings[i], enabledResistances[i]);
+    for (qsizetype i = 0; i < spacings.size(); ++i) {
+        scatterSeries->append(spacings[i], resistances[i]);
 
         // Update range
-        if (enabledSpacings[i] < minX) minX = enabledSpacings[i];
-        if (enabledSpacings[i] > maxX) maxX = enabledSpacings[i];
-        if (enabledResistances[i] < minY) minY = enabledResistances[i];
-        if (enabledResistances[i] > maxY) maxY = enabledResistances[i];
+        if (spacings[i] < minX) minX = spacings[i];
+        if (spacings[i] > maxX) maxX = spacings[i];
+        if (resistances[i] < minY) minY = resistances[i];
+        if (resistances[i] > maxY) maxY = resistances[i];
     }
 
     // Add fitted line data points (extend range for better visual effect)
     double extendedMinX = minX - (maxX - minX) * 0.1;
     double extendedMaxX = maxX + (maxX - minX) * 0.1;
 
-    lineSeries->append(extendedMinX, currentSlope * extendedMinX + currentIntercept);
-    lineSeries->append(extendedMaxX, currentSlope * extendedMaxX + currentIntercept);
+    lineSeries->append(extendedMinX, slope * extendedMinX + intercept);
+    lineSeries->append(extendedMaxX, slope * extendedMaxX + intercept);
 
     // Add series to chart
     chart->addSeries(scatterSeries);
@@ -499,8 +439,8 @@ void MainWindow::onPlotDataReady(const QVector<double> &spacings,
     lineSeries->attachAxis(axisY);
 
     // Calculate TLM parameters for display
-    double Rsh = currentSlope * 100.0;  // Sheet resistance in Ω/sq
-    double Rc = currentIntercept / 20.0; // Contact resistance in Ω·mm
+    double Rsh = slope * 100.0;  // Sheet resistance in Ω/sq
+    double Rc = intercept / 20.0; // Contact resistance in Ω·mm
     double Rouc = (Rc * Rc / Rsh) * 1e-2; // Specific contact resistivity in Ω·cm²
 
     // Add text item to display parameters on chart
@@ -537,34 +477,103 @@ void MainWindow::onPlotDataReady(const QVector<double> &spacings,
 
     // Update chart title to include fit information
     chart->setTitle(QString("TLM Analysis - R = %1 × L + %2")
-                   .arg(currentSlope, 0, 'f', 4)
-                   .arg(currentIntercept, 0, 'f', 4));
+                   .arg(slope, 0, 'f', 4)
+                   .arg(intercept, 0, 'f', 4));
 }
 
-void MainWindow::onDataPointSelectionChanged()
-{
+void MainWindow::onDataPointSelectionChanged() const {
     removePointButton->setEnabled(!dataPointList->selectedItems().isEmpty());
 }
 
-void MainWindow::updateDataPointList()
-{
+void MainWindow::updateDataPointList() const {
     dataPointList->clear();
     
-    for (int i = 0; i < originalSpacings.size(); ++i) {
+    const QVector<DataPoint>& dataPoints = dataManager->getDataPoints();
+    for (int i = 0; i < dataPoints.size(); ++i) {
+        const DataPoint& point = dataPoints.at(i);
         QString itemText = QString("Point %1: Spacing=%2 μm, Resistance=%3 Ω, Current=%4 A")
                           .arg(i + 1)
-                          .arg(originalSpacings[i], 0, 'f', 3)
-                          .arg(originalResistances[i], 0, 'f', 3)
-                          .arg(originalCurrents[i], 0, 'f', 6);
+                          .arg(point.spacing, 0, 'f', 3)
+                          .arg(point.resistance, 0, 'f', 3)
+                          .arg(point.current, 0, 'f', 6);
         
-        if (!dataPointEnabled[i]) {
+        if (!point.enabled) {
             itemText += " (Removed)";
         }
         
         auto *item = new QListWidgetItem(itemText);
-        if (!dataPointEnabled[i]) {
+        if (!point.enabled) {
             item->setForeground(QColor(128, 128, 128)); // Gray out removed points
         }
         dataPointList->addItem(item);
+    }
+}
+
+void MainWindow::onDataChanged()
+{
+    updateDataPointList();
+    
+    // Get enabled data points for plotting
+    QVector<DataPoint> enabledPoints = dataManager->getEnabledDataPoints();
+    
+    if (enabledPoints.size() < 2) {
+        // Not enough points for regression
+        if (!enabledPoints.isEmpty()) {
+            // With only 1 point, we can't calculate a meaningful regression line
+            // Just show the point without the line
+            const DataPoint& point = enabledPoints.first();
+            QVector<double> spacings = {point.spacing};
+            QVector<double> resistances = {point.resistance};
+            QVector<double> currents = {point.current};
+            onPlotDataReady(spacings, resistances, currents, 0.0, point.resistance);
+            
+            // Update result text with single point information
+            QString singlePointResult = resultText->toPlainText();
+            singlePointResult += QString("\nInsufficient data points for TLM analysis.\n"
+                                       "At least 2 points are required for linear regression.\n"
+                                       "Currently showing single point: %1 μm, %2 Ω")
+                                       .arg(point.spacing, 0, 'f', 3)
+                                       .arg(point.resistance, 0, 'f', 3);
+            resultText->setText(singlePointResult);
+        } else {
+            // No points left
+            chart->removeAllSeries();
+            for (QAbstractAxis *axis : chart->axes()) {
+                chart->removeAxis(axis);
+            }
+            chart->setTitle("TLM Analysis - Resistance vs Pad Spacing");
+            resultText->setText("No data points available for analysis.");
+        }
+        return;
+    }
+    
+    // Perform linear regression on enabled points
+    Calculator::TLMResult result;
+    if (dataManager->calculateTLMResults(result)) {
+        // Prepare data for plotting
+        QVector<double> spacings, resistances, currents;
+        for (const DataPoint& point : enabledPoints) {
+            spacings.append(point.spacing);
+            resistances.append(point.resistance);
+            currents.append(point.current);
+        }
+        
+        onPlotDataReady(spacings, resistances, currents, result.slope, result.intercept);
+        
+        // Update result text with detailed TLM analysis results
+        QString detailedResult = resultText->toPlainText();
+        detailedResult += QString("\nTLM Analysis Results:\n"
+                                 "=====================\n"
+                                 "Slope: %1 Ω/μm\n"
+                                 "Intercept: %2 Ω\n"
+                                 "Sheet Resistance (Rsh): %3 Ω/sq\n"
+                                 "Contact Resistance (Rc): %4 Ω·mm\n"
+                                 "Specific Contact Resistivity (ρc): %5 Ω·cm²\n")
+                                 .arg(result.slope, 0, 'e', 3)
+                                 .arg(result.intercept, 0, 'f', 3)
+                                 .arg(result.sheetResistance, 0, 'f', 3)
+                                 .arg(result.contactResistance, 0, 'f', 3)
+                                 .arg(result.specificContactResistivity, 0, 'e', 3);
+        resultText->setText(detailedResult);
     }
 }
