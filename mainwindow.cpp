@@ -9,7 +9,6 @@
 #include <QMenu>
 #include <QGridLayout>
 #include <QPushButton>
-#include <QLabel>
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QProgressBar>
@@ -23,6 +22,7 @@
 #include <QTextBrowser>
 #include <QListWidget>
 #include <QInputDialog>
+#include <QLabel>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -33,7 +33,7 @@ MainWindow::MainWindow(QWidget *parent)
     setupConnections();
     setupChart();
 
-    setWindowTitle("TLM Analyzer - Qt6 Charts");
+    setWindowTitle("TLM Analyzer");
     resize(1200, 900);
 }
 
@@ -221,7 +221,7 @@ void MainWindow::analyzeData()
     for (int i = 0; i < dataPoints.size(); ++i) {
         dataManager->addDataPoint(dataPoints.at(i));
         // Update progress based on data points processed
-        int progress = 30 + (i * 40 / dataPoints.size());
+        int progress = 30 + static_cast<int>(i * 40 / dataPoints.size());
         progressBar->setValue(progress);
     }
     
@@ -332,11 +332,6 @@ void MainWindow::showAbout()
         "<p><b>Description:</b> TLM Analyzer is a specialized tool for analyzing Transmission Line Model data from CSV files.</p>"
         "<p><b>Written by JeongYeham implementing Qt6.</b></p>"
         "<p><b>Special THANKS to Pudd1ng!!</b></p>"
-        "<p><b>Technology:</b></p>"
-        "<ul>"
-        "<li>Qt6 Framework</li>"
-        "<li>Qt Charts Module</li>"
-        "</ul>"
         "<p><b>License:</b> MIT License</p>"
     );
     
@@ -347,7 +342,7 @@ void MainWindow::showAbout()
     layout->addWidget(closeButton);
     
     aboutDialog.setLayout(layout);
-    aboutDialog.resize(400, 300);
+    aboutDialog.resize(400, 400);
     aboutDialog.exec();
 }
 
@@ -558,6 +553,9 @@ void MainWindow::onDataChanged()
             currents.append(point.current);
         }
         
+        // Calculate R-squared value
+        result.rSquared = Calculator::calculateRSquared(spacings, resistances, result.slope, result.intercept);
+        
         onPlotDataReady(spacings, resistances, currents, result.slope, result.intercept);
         
         // Update result text with detailed TLM analysis results
@@ -566,11 +564,13 @@ void MainWindow::onDataChanged()
                                  "=====================\n"
                                  "Slope: %1 Ω/μm\n"
                                  "Intercept: %2 Ω\n"
-                                 "Sheet Resistance (Rsh): %3 Ω/sq\n"
-                                 "Contact Resistance (Rc): %4 Ω·mm\n"
-                                 "Specific Contact Resistivity (ρc): %5 Ω·cm²\n")
+                                 "R-squared: %3\n"
+                                 "Sheet Resistance (Rsh): %4 Ω/sq\n"
+                                 "Contact Resistance (Rc): %5 Ω·mm\n"
+                                 "Specific Contact Resistivity (ρc): %6 Ω·cm²\n")
                                  .arg(result.slope, 0, 'e', 3)
                                  .arg(result.intercept, 0, 'f', 3)
+                                 .arg(result.rSquared, 0, 'f', 6)
                                  .arg(result.sheetResistance, 0, 'f', 3)
                                  .arg(result.contactResistance, 0, 'f', 3)
                                  .arg(result.specificContactResistivity, 0, 'e', 3);
