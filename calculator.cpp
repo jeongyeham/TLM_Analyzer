@@ -1,6 +1,5 @@
 #include "include/calculator.h"
 #include <cmath>
-#include <algorithm>
 
 bool Calculator::linearRegression(const QVector<DataPoint> &dataPoints, Calculator::TLMResult &result)
 {
@@ -73,4 +72,39 @@ bool Calculator::linearRegression(const QVector<double> &x, const QVector<double
     intercept = meanY - slope * meanX;
 
     return true;
+}
+
+// Added function to calculate R-squared value
+double Calculator::calculateRSquared(const QVector<double> &x, const QVector<double> &y, 
+                                   double slope, double intercept)
+{
+    if (x.size() != y.size() || x.size() < 2) {
+        return 0.0;
+    }
+    
+    qsizetype n = x.size();
+    
+    // Calculate mean of y values
+    double meanY = 0.0;
+    for (qsizetype i = 0; i < n; ++i) {
+        meanY += y[i];
+    }
+    meanY /= n;
+    
+    // Calculate total sum of squares and residual sum of squares
+    double totalSumSquares = 0.0;
+    double residualSumSquares = 0.0;
+    
+    for (qsizetype i = 0; i < n; ++i) {
+        double predictedY = slope * x[i] + intercept;
+        totalSumSquares += (y[i] - meanY) * (y[i] - meanY);
+        residualSumSquares += (y[i] - predictedY) * (y[i] - predictedY);
+    }
+    
+    // Calculate R-squared
+    if (std::abs(totalSumSquares) < 1e-15) {
+        return 1.0; // Perfect fit when all y values are the same
+    }
+    
+    return 1.0 - (residualSumSquares / totalSumSquares);
 }
