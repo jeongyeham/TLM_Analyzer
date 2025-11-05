@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.16)
 
 project(TLMAnalyzer)
 
@@ -15,22 +15,23 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 find_package(Qt6 COMPONENTS
     Core
     Gui
-    Widgets
-    Charts
+    Quick
+    QuickControls2
+    Qml
     REQUIRED)
 
-add_executable(${PROJECT_NAME} WIN32
-        source.qrc
+qt6_standard_project_setup()
+
+qt6_add_executable(${PROJECT_NAME}
         main.cpp
-        mainwindow.cpp
         csvprocessor.cpp
         calculator.cpp
         datamanager.cpp
-        include/mainwindow.h
         include/datapoint.h
         include/csvprocessor.h
         include/calculator.h
         include/datamanager.h
+        qml.qrc
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE 
@@ -40,42 +41,21 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::Core
     Qt6::Gui
-    Qt6::Widgets
-    Qt6::Charts
+    Qt6::Quick
+    Qt6::QuickControls2
+    Qt6::Qml
 )
 
-if (WIN32)
-    set(DEBUG_SUFFIX "")
-    if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-        set(DEBUG_SUFFIX "d")
-    endif()
-    
-    set(QT_INSTALL_PATH "${CMAKE_PREFIX_PATH}")
-    if (NOT EXISTS "${QT_INSTALL_PATH}/bin")
-        set(QT_INSTALL_PATH "${QT_INSTALL_PATH}/..")
-        if (NOT EXISTS "${QT_INSTALL_PATH}/bin")
-            set(QT_INSTALL_PATH "${QT_INSTALL_PATH}/..")
-        endif()
-    endif()
-
-    if (EXISTS "${QT_INSTALL_PATH}/plugins/platforms/qwindows${DEBUG_SUFFIX}.dll")
-        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E make_directory
-            "$<TARGET_FILE_DIR:${PROJECT_NAME}>/plugins/platforms/"
-        )
-        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy
-            "${QT_INSTALL_PATH}/plugins/platforms/qwindows${DEBUG_SUFFIX}.dll"
-            "$<TARGET_FILE_DIR:${PROJECT_NAME}>/plugins/platforms/"
-        )
-    endif()
-
-    foreach(QT_LIB Core Gui Widgets Charts OpenGL OpenGLWidgets)
-        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy
-            "${QT_INSTALL_PATH}/bin/Qt6${QT_LIB}${DEBUG_SUFFIX}.dll"
-            "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
-        )
-    endforeach()
-
+# Run windeployqt after build to collect all required DLLs
+find_program(WINDEPLOYQT_EXECUTABLE windeployqt HINTS "${QT_INSTALL_PATH}/bin")
+if(WINDEPLOYQT_EXECUTABLE)
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${WINDEPLOYQT_EXECUTABLE} 
+        --dir "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
+        --qmldir "${CMAKE_SOURCE_DIR}/qml"
+        --plugindir "$<TARGET_FILE_DIR:${PROJECT_NAME}>/plugins"
+        --pdb
+        $<TARGET_FILE:${PROJECT_NAME}>
+        COMMENT "Running windeployqt to collect required DLLs..."
+    )
 endif()
