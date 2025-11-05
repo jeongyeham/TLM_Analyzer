@@ -8,6 +8,16 @@
 #include <QRegularExpression>
 #include <algorithm>
 
+/**
+ * @brief Process all CSV files in a folder to extract TLM data points
+ * @param folderPath Path to the folder containing CSV files
+ * @param voltage Reference voltage for resistance calculations
+ * @return QVector of DataPoint objects extracted from the CSV files
+ * 
+ * This method scans a folder for CSV files, extracts spacing information from filenames,
+ * processes each file to extract current/voltage measurements, and calculates resistance
+ * values. The resulting data points are sorted by spacing before being returned.
+ */
 QVector<DataPoint> CSVProcessor::processFolder(const QString &folderPath, double voltage)
 {
     QDir dir(folderPath);
@@ -38,6 +48,17 @@ QVector<DataPoint> CSVProcessor::processFolder(const QString &folderPath, double
     return dataPoints;
 }
 
+/**
+ * @brief Process a single CSV file to extract electrical measurements
+ * @param filePath Path to the CSV file to process
+ * @param voltage Reference voltage for resistance calculations
+ * @return DataPoint object containing the extracted measurements
+ * 
+ * This method reads a CSV file containing electrical measurements, extracts voltage
+ * and current values at the specified reference voltage and near zero volts, and
+ * calculates the resistance. The method assumes a specific CSV format with voltage
+ * in column 6 and current in column 7.
+ */
 DataPoint CSVProcessor::processFile(const QString &filePath, double voltage)
 {
     DataPoint point;
@@ -98,6 +119,14 @@ DataPoint CSVProcessor::processFile(const QString &filePath, double voltage)
     return point;
 }
 
+/**
+ * @brief Extract spacing value from a filename
+ * @param filename The filename to parse
+ * @return The extracted spacing value, or -1 if no valid spacing was found
+ * 
+ * This method uses a regular expression to extract numeric spacing values from
+ * filenames. It expects the spacing value to be the first number in the filename.
+ */
 double CSVProcessor::extractSpacingFromFilename(const QString &filename)
 {
     QRegularExpression spacingRegex(R"((\d+(?:\.\d+)?))");
