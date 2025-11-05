@@ -5,7 +5,6 @@ Item {
     id: chartContainer
     
     // Properties for chart configuration
-    property alias chartView: chartView
     property var dataPoints: []
     property bool showLinearFit: true
     property string xAxisLabel: "Spacing (μm)"
