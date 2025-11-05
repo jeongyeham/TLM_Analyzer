@@ -46,16 +46,16 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::Qml
 )
 
-# Run windeployqt after build to collect all required DLLs
-find_program(WINDEPLOYQT_EXECUTABLE windeployqt HINTS "${QT_INSTALL_PATH}/bin")
-if(WINDEPLOYQT_EXECUTABLE)
-    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${WINDEPLOYQT_EXECUTABLE} 
-        --dir "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
-        --qmldir "${CMAKE_SOURCE_DIR}/qml"
-        --plugindir "$<TARGET_FILE_DIR:${PROJECT_NAME}>/plugins"
-        --pdb
-        $<TARGET_FILE:${PROJECT_NAME}>
-        COMMENT "Running windeployqt to collect required DLLs..."
-    )
-endif()
+    # Run windeployqt after build to collect all required DLLs
+    find_program(WINDEPLOYQT_EXECUTABLE windeployqt HINTS "${QT_INSTALL_PATH}/bin")
+    if(WINDEPLOYQT_EXECUTABLE)
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${WINDEPLOYQT_EXECUTABLE} 
+            --dir "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
+            --qmldir "${CMAKE_SOURCE_DIR}/qml"
+            --plugindir "$<TARGET_FILE_DIR:${PROJECT_NAME}>/plugins"
+            --pdb
+            $<TARGET_FILE:${PROJECT_NAME}>
+            COMMENT "Running windeployqt to collect required DLLs..."
+        )
+    endif()
