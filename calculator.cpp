@@ -1,6 +1,17 @@
 #include "include/calculator.h"
 #include <cmath>
 
+/**
+ * @brief Perform linear regression analysis on TLM data points
+ * @param dataPoints Vector of DataPoint objects to analyze
+ * @param result Reference to TLMResult object to store calculated values
+ * @return True if regression was successful, false otherwise
+ * 
+ * This method performs a linear regression analysis on the provided data points
+ * to calculate TLM parameters including sheet resistance, contact resistance,
+ * and specific contact resistivity. Only enabled data points are included in
+ * the calculation.
+ */
 bool Calculator::linearRegression(const QVector<DataPoint> &dataPoints, Calculator::TLMResult &result)
 {
     if (dataPoints.size() < 2) {
@@ -35,6 +46,17 @@ bool Calculator::linearRegression(const QVector<DataPoint> &dataPoints, Calculat
     return true;
 }
 
+/**
+ * @brief Perform linear regression on x,y data pairs
+ * @param x Vector of x values
+ * @param y Vector of y values
+ * @param slope Reference to store the calculated slope
+ * @param intercept Reference to store the calculated y-intercept
+ * @return True if regression was successful, false otherwise
+ * 
+ * This method performs a standard linear regression using the least squares method.
+ * It uses numerically stable centering techniques to improve accuracy.
+ */
 bool Calculator::linearRegression(const QVector<double> &x, const QVector<double> &y,
                                  double &slope, double &intercept)
 {
@@ -74,7 +96,17 @@ bool Calculator::linearRegression(const QVector<double> &x, const QVector<double
     return true;
 }
 
-// Added function to calculate R-squared value
+/**
+ * @brief Calculate the coefficient of determination (R-squared) for a linear fit
+ * @param x Vector of x values
+ * @param y Vector of y values
+ * @param slope The slope of the fitted line
+ * @param intercept The y-intercept of the fitted line
+ * @return The R-squared value indicating goodness of fit (0.0 to 1.0)
+ * 
+ * This method calculates how well the linear model fits the data, with values
+ * closer to 1.0 indicating a better fit.
+ */
 double Calculator::calculateRSquared(const QVector<double> &x, const QVector<double> &y, 
                                    double slope, double intercept)
 {
