@@ -1,6 +1,8 @@
 <RCC>
     <qresource prefix="/">
-        <file>qml/Main.qml</file>
-        <file>qml/ChartData.qml</file>
+        <file>qml/App.qml</file>
+        <file>qml/MainUI.qml</file>
+        <file>qml/Implementation.qml</file>
+        <file alias="app.ico">images/app.ico</file>
     </qresource>
 </RCC>

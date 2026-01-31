@@ -11,14 +11,14 @@
 /**
  * @brief Process all CSV files in a folder to extract TLM data points
  * @param folderPath Path to the folder containing CSV files
- * @param voltage Reference voltage for resistance calculations
+ * @param config Application configuration
  * @return QVector of DataPoint objects extracted from the CSV files
  * 
  * This method scans a folder for CSV files, extracts spacing information from filenames,
  * processes each file to extract current/voltage measurements, and calculates resistance
  * values. The resulting data points are sorted by spacing before being returned.
  */
-QVector<DataPoint> CSVProcessor::processFolder(const QString &folderPath, double voltage)
+QVector<DataPoint> CSVProcessor::processFolder(const QString &folderPath, const AppConfig& config)
 {
     QDir dir(folderPath);
     QStringList csvFiles = dir.entryList({"*.csv"}, QDir::Files);
@@ -30,13 +30,17 @@ QVector<DataPoint> CSVProcessor::processFolder(const QString &folderPath, double
         double spacing = extractSpacingFromFilename(filename);
         if (spacing > 0) {
             QString filePath = dir.filePath(filename);
-            DataPoint point = processFile(filePath, voltage);
+            DataPoint point = processFile(filePath, config);
             
-            if (point.resistance > 0) {
+            if (point.resistance > 0 && std::isfinite(point.resistance)) {
                 point.spacing = spacing;
                 dataPoints.append(point);
                 qDebug() << "File:" << filename << "Spacing:" << spacing << "μm, Resistance:" << point.resistance << "Ω, Current:" << point.current << "A";
+            } else {
+                qDebug() << "Skipping file due to invalid resistance:" << filename << point.resistance;
             }
+        } else {
+            qDebug() << "Filename does not contain valid spacing, skipping:" << filename;
         }
     }
     
@@ -51,7 +55,7 @@ QVector<DataPoint> CSVProcessor::processFolder(const QString &folderPath, double
 /**
  * @brief Process a single CSV file to extract electrical measurements
  * @param filePath Path to the CSV file to process
- * @param voltage Reference voltage for resistance calculations
+ * @param config Application configuration
  * @return DataPoint object containing the extracted measurements
  * 
  * This method reads a CSV file containing electrical measurements, extracts voltage
@@ -59,7 +63,7 @@ QVector<DataPoint> CSVProcessor::processFolder(const QString &folderPath, double
  * calculates the resistance. The method assumes a specific CSV format with voltage
  * in column 6 and current in column 7.
  */
-DataPoint CSVProcessor::processFile(const QString &filePath, double voltage)
+DataPoint CSVProcessor::processFile(const QString &filePath, const AppConfig& config)
 {
     DataPoint point;
     
@@ -87,7 +91,7 @@ DataPoint CSVProcessor::processFile(const QString &filePath, double voltage)
             double i = fields[6].toDouble(&ok2);  // Column 7 current
 
             if (ok1 && ok2) {
-                if (std::abs(v - voltage) < 1e-3 && !foundVoltage) {
+                if (std::abs(v - config.res_voltage) < 1e-3 && !foundVoltage) {
                     I_voltage = i;
                     foundVoltage = true;
                 }
@@ -106,11 +110,17 @@ DataPoint CSVProcessor::processFile(const QString &filePath, double voltage)
     file.close();
 
     if (foundVoltage && foundZero) {
-        point.resistance = voltage / (I_voltage - I_zero);
-        point.current = I_voltage - I_zero;  // Store the current value
-        qDebug() << "File:" << QFileInfo(filePath).fileName()
-                 << "V:" << voltage << "I_voltage:" << I_voltage
-                 << "I_zero:" << I_zero << "R:" << point.resistance;
+        double deltaI = (I_voltage - I_zero);
+        if (std::abs(deltaI) < 1e-15 || !std::isfinite(deltaI)) {
+            point.resistance = -1;
+            qDebug() << "Invalid current difference (zero or non-finite) in file:" << filePath << "deltaI=" << deltaI;
+        } else {
+            point.resistance = config.res_voltage / deltaI;
+            point.current = deltaI;  // Store the current value
+            qDebug() << "File:" << QFileInfo(filePath).fileName()
+                     << "V:" << config.res_voltage << "I_voltage:" << I_voltage
+                     << "I_zero:" << I_zero << "R:" << point.resistance;
+        }
     } else {
         point.resistance = -1;
         qDebug() << "Incomplete data in file:" << filePath;
@@ -129,7 +139,7 @@ DataPoint CSVProcessor::processFile(const QString &filePath, double voltage)
  */
 double CSVProcessor::extractSpacingFromFilename(const QString &filename)
 {
-    QRegularExpression spacingRegex(R"((\d+(?:\.\d+)?))");
+    static const QRegularExpression spacingRegex(R"((\d+(?:\.\d+)?))");
     QRegularExpressionMatch match = spacingRegex.match(QFileInfo(filename).baseName());
     if (match.hasMatch()) {
         return match.captured(1).toDouble();

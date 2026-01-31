@@ -20,15 +20,16 @@ public:
         double intercept;                  ///< Y-intercept of the linear fit
         double rSquared;                   ///< R-squared value (coefficient of determination)
         double sheetResistance;            ///< Sheet resistance in Ω/sq
-        double contactResistance;          ///< Contact resistance in Ω·mm
+        double contactResistance;          ///< Contact resistance in Ω
         double specificContactResistivity; ///< Specific contact resistivity in Ω·cm²
+        double channelWidth;               ///< Channel width in μm
         
         /**
          * @brief Default constructor
          * Initializes all values to zero
          */
         TLMResult() : slope(0.0), intercept(0.0), rSquared(0.0), sheetResistance(0.0), 
-                     contactResistance(0.0), specificContactResistivity(0.0) {}
+                     contactResistance(0.0), specificContactResistivity(0.0), channelWidth(100.0) {}
     };
     
     /**
@@ -38,6 +39,15 @@ public:
      * @return True if successful, false otherwise
      */
     static bool linearRegression(const QVector<DataPoint> &dataPoints, TLMResult &result);
+    
+    /**
+     * @brief Perform linear regression on DataPoint vector with specified channel width
+     * @param dataPoints Vector of data points to analyze
+     * @param result Reference to TLMResult structure to store results
+     * @param channelWidth Width of the channel in μm
+     * @return True if successful, false otherwise
+     */
+    static bool linearRegression(const QVector<DataPoint> &dataPoints, TLMResult &result, double channelWidth);
     
     /**
      * @brief Perform linear regression on x,y value pairs

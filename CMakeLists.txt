@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(TLMAnalyzer)
+project(TLM_Analyzer)
 
-set(CMAKE_PREFIX_PATH "E:/Qt/6.10.0/msvc2022_64/lib/cmake")
+set(CMAKE_PREFIX_PATH "D:/Qt/6.10.0/msvc2022_64/lib/cmake")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -27,10 +27,14 @@ qt6_add_executable(${PROJECT_NAME}
         csvprocessor.cpp
         calculator.cpp
         datamanager.cpp
+        appconfig.cpp
+        datapointmodel.cpp
         include/datapoint.h
+        include/datapointmodel.h
         include/csvprocessor.h
         include/calculator.h
         include/datamanager.h
+        include/appconfig.h
         qml.qrc
 )
 
@@ -45,6 +49,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::QuickControls2
     Qt6::Qml
 )
+
 
     # Run windeployqt after build to collect all required DLLs
     find_program(WINDEPLOYQT_EXECUTABLE windeployqt HINTS "${QT_INSTALL_PATH}/bin")

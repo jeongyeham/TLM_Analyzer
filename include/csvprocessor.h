@@ -2,6 +2,7 @@
 #define TLMANALYZER_CSVPARSER_H
 
 #include "datapoint.h"
+#include "appconfig.h"
 
 /**
  * @brief Utility class for processing CSV files containing TLM measurement data
@@ -18,18 +19,18 @@ public:
     /**
      * @brief Process all CSV files in a folder
      * @param folderPath Path to the folder containing CSV files
-     * @param voltage Reference voltage for resistance calculations
+     * @param config Application configuration
      * @return QVector of DataPoint objects extracted from the CSV files
      */
-    static QVector<DataPoint> processFolder(const QString &folderPath, double voltage);
+    static QVector<DataPoint> processFolder(const QString &folderPath, const AppConfig& config);
     
     /**
      * @brief Process a single CSV file
      * @param filePath Path to the CSV file to process
-     * @param voltage Reference voltage for resistance calculations
+     * @param config Application configuration
      * @return DataPoint object containing the extracted measurements
      */
-    static DataPoint processFile(const QString &filePath, double voltage);
+    static DataPoint processFile(const QString &filePath, const AppConfig& config);
     
     /**
      * @brief Extract spacing value from a filename

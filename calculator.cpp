@@ -14,6 +14,24 @@
  */
 bool Calculator::linearRegression(const QVector<DataPoint> &dataPoints, Calculator::TLMResult &result)
 {
+    // Use default channel width of 100 μm for backward compatibility
+    return linearRegression(dataPoints, result, 100.0);
+}
+
+/**
+ * @brief Perform linear regression analysis on TLM data points with specified channel width
+ * @param dataPoints Vector of DataPoint objects to analyze
+ * @param result Reference to TLMResult object to store calculated values
+ * @param channelWidth Width of the channel in μm
+ * @return True if regression was successful, false otherwise
+ * 
+ * This method performs a linear regression analysis on the provided data points
+ * to calculate TLM parameters including sheet resistance, contact resistance,
+ * and specific contact resistivity. Only enabled data points are included in
+ * the calculation.
+ */
+bool Calculator::linearRegression(const QVector<DataPoint> &dataPoints, Calculator::TLMResult &result, double channelWidth)
+{
     if (dataPoints.size() < 2) {
         return false;
     }
@@ -39,10 +57,20 @@ bool Calculator::linearRegression(const QVector<DataPoint> &dataPoints, Calculat
     
     result.slope = slope;
     result.intercept = intercept;
-    result.sheetResistance = slope * 100.0;  // Convert to Ω/sq
-    result.contactResistance = intercept / 20.0; // Contact resistance in Ω·mm
-    result.specificContactResistivity = (result.contactResistance * result.contactResistance / result.sheetResistance) * 1e-2; // ρc in Ω·cm²
-    
+    result.channelWidth = channelWidth;
+    result.sheetResistance = slope * channelWidth;  // Convert to Ω/sq
+    result.contactResistance = intercept; // Contact resistance in Ω
+    // Specific contact resistivity (legacy formula used by the app).
+    // Keep same units as before but guard against division by zero.
+    if (std::abs(result.sheetResistance) < 1e-15) {
+        result.specificContactResistivity = 0.0;
+    } else {
+        result.specificContactResistivity = (result.contactResistance * result.contactResistance / result.sheetResistance) * 1e-2; // ρc in Ω·cm²
+    }
+
+    // Calculate and store R-squared for the fit
+    result.rSquared = calculateRSquared(x, y, slope, intercept);
+
     return true;
 }
 
@@ -72,8 +100,9 @@ bool Calculator::linearRegression(const QVector<double> &x, const QVector<double
         meanX += x[i];
         meanY += y[i];
     }
-    meanX /= n;
-    meanY /= n;
+    // Avoid narrowing conversion by casting n to double
+    meanX /= static_cast<double>(n);
+    meanY /= static_cast<double>(n);
 
     // Calculate centered sums for better numerical stability
     double sumXY_centered = 0.0, sumX2_centered = 0.0;
@@ -121,8 +150,8 @@ double Calculator::calculateRSquared(const QVector<double> &x, const QVector<dou
     for (qsizetype i = 0; i < n; ++i) {
         meanY += y[i];
     }
-    meanY /= n;
-    
+    meanY /= static_cast<double>(n);
+
     // Calculate total sum of squares and residual sum of squares
     double totalSumSquares = 0.0;
     double residualSumSquares = 0.0;
@@ -138,5 +167,9 @@ double Calculator::calculateRSquared(const QVector<double> &x, const QVector<dou
         return 1.0; // Perfect fit when all y values are the same
     }
     
-    return 1.0 - (residualSumSquares / totalSumSquares);
+    double r2 = 1.0 - (residualSumSquares / totalSumSquares);
+    // Clamp to [0,1] for safety against numerical noise
+    if (r2 < 0.0) r2 = 0.0;
+    if (r2 > 1.0) r2 = 1.0;
+    return r2;
 }
