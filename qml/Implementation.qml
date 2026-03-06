@@ -28,10 +28,23 @@ QtObject {
             DataManager.c_clearDisabledDataPoints();
     }
 
+    function c_setChannelWidth(width) {
+        if (typeof DataManager !== 'undefined') {
+            qml_channelWidth = width;
+            DataManager.setChannelWidth(width);
+        }
+    }
+    function c_setResistanceVoltage(voltage) {
+        if (typeof DataManager !== 'undefined') {
+            qml_resistanceVoltage = voltage;
+            DataManager.setResistanceVoltage(voltage);
+        }
+    }
+
     // Minimal wrappers used by MainUI.qml
     function c_loadDataFromFolder() {
         if (typeof DataManager !== 'undefined')
-            DataManager.c_loadDataFromFolder(qml_currentFolder);
+            DataManager.c_loadDataFromFolder(qml_currentFolder, qml_resistanceVoltage);
     }
     function c_performAnalysis() {
         if (typeof DataManager !== 'undefined')
