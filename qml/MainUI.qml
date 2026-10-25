@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Dialogs
-import "./Implementation.qml" as Impl
 
 ApplicationWindow {
     id: mainWindow
@@ -16,7 +15,12 @@ ApplicationWindow {
     property double qml_resistanceVoltage: 1.0
     property double qml_channelWidth: 100.0  // Default channel width in μm
 
-    
+    // Loader for the Implementation bridge object
+    Loader {
+        id: implLoader
+        source: "Implementation.qml"
+    }
+
     // Animations
     SequentialAnimation {
         id: messageFadeInAnimation
@@ -146,7 +150,7 @@ ApplicationWindow {
                 text: qsTr("Cancel Load")
                 enabled: false
                 onClicked: {
-   //TODO: Implement
+                    if (implLoader.item) implLoader.item.c_cancelLoad()
                 }
             }
 
@@ -494,7 +498,7 @@ ApplicationWindow {
                 id: spacingField
                 Layout.fillWidth: true
                 validator: DoubleValidator {
-                    bottom: -1000000.0
+                    bottom: 0.001
                     top: 1000000.0
                 }
             }
@@ -517,7 +521,7 @@ ApplicationWindow {
             var spacing = parseFloat(spacingField.text)
             var current = parseFloat(currentField.text)
             
-            if (!isNaN(spacing) && !isNaN(current)) {
+            if (!isNaN(spacing) && spacing > 0 && !isNaN(current)) {
                 // Add the data point through implementation
                 // Use the voltage from settings
                 implLoader.item.c_addManualDataPoint(spacing, current, implLoader.item.qml_resistanceVoltage)

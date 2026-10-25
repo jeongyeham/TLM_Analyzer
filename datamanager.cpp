@@ -287,8 +287,6 @@ void DataManager::c_loadDataFromFolder(const QString &folderPath, double voltage
 
     // Set future to watcher so finished() handler will pick up results
     m_loadWatcher->setFuture(future);
-
-    Q_UNUSED(csvFiles);
 }
 
 void DataManager::c_cancelLoad()

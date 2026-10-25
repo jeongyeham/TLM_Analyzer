@@ -2,7 +2,12 @@ cmake_minimum_required(VERSION 3.16)
 
 project(TLM_Analyzer)
 
-set(CMAKE_PREFIX_PATH "D:/Qt/6.10.0/msvc2022_64/lib/cmake")
+# Allow callers (or CI) to override Qt location via -DCMAKE_PREFIX_PATH=...
+# Fall back to the developer's local MSVC installation only when no path is
+# provided and we are building on Windows.
+if(NOT CMAKE_PREFIX_PATH AND WIN32)
+    set(CMAKE_PREFIX_PATH "D:/Qt/6.10.0/msvc2022_64/lib/cmake")
+endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -50,7 +55,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::Qml
 )
 
-
+if(WIN32)
     # Run windeployqt after build to collect all required DLLs
     find_program(WINDEPLOYQT_EXECUTABLE windeployqt HINTS "${QT_INSTALL_PATH}/bin")
     if(WINDEPLOYQT_EXECUTABLE)
@@ -64,3 +69,4 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
             COMMENT "Running windeployqt to collect required DLLs..."
         )
     endif()
+endif()
